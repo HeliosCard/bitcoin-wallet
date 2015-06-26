@@ -66,6 +66,13 @@ public final class UpgradeWalletService extends IntentService
 	{
 		final Wallet wallet = application.getWallet();
 
+		// BEGIN HELIOSCARD CHANGE
+		if (wallet == null) {
+			// No wallet to upgrade
+			return;
+		}
+		// END HELIOSCARD CHANGE
+
 		if (wallet.isDeterministicUpgradeRequired())
 		{
 			log.info("detected non-HD wallet, upgrading");

@@ -26,7 +26,11 @@ import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.widget.FrameLayout;
-import de.schildbach.wallet_test.R;
+// BEGIN HELIOSCARD CHANGE
+//import de.schildbach.wallet_test.R;
+import com.helioscard.wallet.bitcoin.R;
+// END HELIOSCARD CHANGE
+
 
 /**
  * @author Andreas Schildbach

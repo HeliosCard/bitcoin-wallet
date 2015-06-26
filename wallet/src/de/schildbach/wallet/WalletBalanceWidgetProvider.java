@@ -47,7 +47,11 @@ import de.schildbach.wallet.ui.WalletActivity;
 import de.schildbach.wallet.ui.send.SendCoinsActivity;
 import de.schildbach.wallet.util.GenericUtils;
 import de.schildbach.wallet.util.MonetarySpannable;
-import de.schildbach.wallet_test.R;
+// BEGIN HELIOSCARD CHANGE
+//import de.schildbach.wallet_test.R;
+import com.helioscard.wallet.bitcoin.R;
+// END HELIOSCARD CHANGE
+
 
 /**
  * @author Andreas Schildbach

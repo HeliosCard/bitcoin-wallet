@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name_helios">HeliosCard</string>
+    <string name="helioscard_ok">OK</string>
+    <string name="helioscard_cancel">Cancel</string>
+    <string name="integration_progress_text">Signing Data With Card (%1$d Inputs)</string>
+    <string name="option_change_password">Change Card Password</string>
+    <string name="no_anti_malware_key">No anti-malware key set. Please scan the anti malware QR code on the back of your HeliosCard.</string>
+    <string name="error_sign">Unknown error while signing</string>
+</resources>

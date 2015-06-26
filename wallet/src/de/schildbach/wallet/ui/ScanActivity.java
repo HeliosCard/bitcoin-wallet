@@ -58,7 +58,11 @@ import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.qrcode.QRCodeReader;
 
 import de.schildbach.wallet.camera.CameraManager;
-import de.schildbach.wallet_test.R;
+// BEGIN HELIOSCARD CHANGE
+//import de.schildbach.wallet_test.R;
+import com.helioscard.wallet.bitcoin.R;
+// END HELIOSCARD CHANGE
+
 
 /**
  * @author Andreas Schildbach

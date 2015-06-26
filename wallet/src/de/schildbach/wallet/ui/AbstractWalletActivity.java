@@ -22,12 +22,20 @@ import org.slf4j.LoggerFactory;
 
 import android.app.Activity;
 import android.os.Bundle;
+
+/* BEGIN HELIOSCARD CHANGE */
+import com.helioscard.wallet.bitcoin.ui.NFCAwareActivity;
+/* END HELIOSCARD CHANGE */
+
 import de.schildbach.wallet.WalletApplication;
 
 /**
  * @author Andreas Schildbach
  */
-public abstract class AbstractWalletActivity extends Activity
+/* BEGIN HELIOSCARD CHANGE */
+//public abstract class AbstractWalletActivity extends Activity
+public abstract class AbstractWalletActivity extends NFCAwareActivity
+/* END HELIOSCARD CHANGE */
 {
 	private WalletApplication application;
 

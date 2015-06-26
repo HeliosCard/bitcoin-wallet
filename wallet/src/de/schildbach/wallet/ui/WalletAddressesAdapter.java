@@ -35,7 +35,10 @@ import android.widget.TextView;
 import de.schildbach.wallet.AddressBookProvider;
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.util.WalletUtils;
-import de.schildbach.wallet_test.R;
+// BEGIN HELIOSCARD CHANGE
+//import de.schildbach.wallet_test.R;
+import com.helioscard.wallet.bitcoin.R;
+// END HELIOSCARD CHANGE
 
 /**
  * @author Andreas Schildbach

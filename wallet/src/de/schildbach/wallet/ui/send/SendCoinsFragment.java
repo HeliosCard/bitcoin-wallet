@@ -116,12 +116,21 @@ import de.schildbach.wallet.ui.TransactionsAdapter;
 import de.schildbach.wallet.util.Bluetooth;
 import de.schildbach.wallet.util.Nfc;
 import de.schildbach.wallet.util.WalletUtils;
-import de.schildbach.wallet_test.R;
+// BEGIN HELIOSCARD CHANGE
+//import de.schildbach.wallet_test.R;
+import com.helioscard.wallet.bitcoin.R;
+import com.helioscard.wallet.bitcoin.util.Util;
+import com.helioscard.wallet.bitcoin.wallet.WalletGlobals;
+// END HELIOSCARD CHANGE
+
 
 /**
  * @author Andreas Schildbach
  */
 public final class SendCoinsFragment extends Fragment
+	/* BEGIN HELIOSCARD CHANGE */
+        implements com.helioscard.wallet.bitcoin.wallet.SecureElementTransactionSigner.Listener
+    /* END HELIOSCARD CHANGE */
 {
 	private AbstractBindServiceActivity activity;
 	private WalletApplication application;
@@ -181,6 +190,13 @@ public final class SendCoinsFragment extends Fragment
 	private static final int REQUEST_CODE_ENABLE_BLUETOOTH_FOR_DIRECT_PAYMENT = 2;
 
 	private static final Logger log = LoggerFactory.getLogger(SendCoinsFragment.class);
+
+	/* BEGIN HELIOSCARD CHANGE */
+	private com.helioscard.wallet.bitcoin.wallet.SecureElementTransactionSigner _secureElementTransactionSigner;
+	private TextView _signingProgressTextView;
+	private android.widget.ProgressBar _signingProgressBar;
+	/* END HELIOSCARD CHANGE */
+
 
 	private enum State
 	{
@@ -578,8 +594,29 @@ public final class SendCoinsFragment extends Fragment
 			}
 		});
 
+		/* BEGIN HELIOSCARD CHANGE */
+		_signingProgressTextView = (TextView)view.findViewById(R.id.send_coins_progress_indicator_text_view);
+		_signingProgressBar = (android.widget.ProgressBar)view.findViewById(R.id.send_coins_progress_indicator_progress_bar);
+		setProgressViewsInitialState();
+		/* END HELIOSCARD CHANGE */
+
 		return view;
 	}
+
+	/* BEGIN HELIOSCARD CHANGE */
+	private void setProgressViewsInitialState() {
+		// We're currently in the middle of signing a transaction
+		if (_secureElementTransactionSigner != null) {
+			_signingProgressTextView.setText( String.format(getResources().getString(R.string.integration_progress_text), _secureElementTransactionSigner.getNumInputs())  );
+			_signingProgressBar.setProgress(_secureElementTransactionSigner.getProgress());
+			_signingProgressTextView.setVisibility(View.VISIBLE);
+			_signingProgressBar.setVisibility(View.VISIBLE);
+		} else {
+			_signingProgressTextView.setVisibility(View.GONE);
+			_signingProgressBar.setVisibility(View.GONE);
+		}
+	}
+	/* END HELIOSCARD CHANGE */
 
 	@Override
 	public void onDestroyView()
@@ -635,6 +672,13 @@ public final class SendCoinsFragment extends Fragment
 
 		if (sentTransaction != null)
 			sentTransaction.getConfidence().removeEventListener(sentTransactionConfidenceListener);
+
+		/* BEGIN HELIOSCARD CHANGE */
+		if (_secureElementTransactionSigner != null) {
+			_secureElementTransactionSigner.cancel(true);
+			_secureElementTransactionSigner = null;
+		}
+		/* END HELIOSCARD CHANGE */
 
 		super.onDestroy();
 	}
@@ -721,6 +765,15 @@ public final class SendCoinsFragment extends Fragment
 					{
 						dialog(activity, null, R.string.button_scan, messageResId, messageArgs);
 					}
+
+					// BEGIN HELIOSCARD CHANGE
+					@Override
+					protected void handleAntiMalwareKey(String key) {
+						com.helioscard.wallet.bitcoin.ui.NFCAwareActivity nfcAwareActivity = (com.helioscard.wallet.bitcoin.ui.NFCAwareActivity) getActivity();
+						nfcAwareActivity.saveAntiMalwareKey(key);
+					}
+					// END HELIOSCARD CHANGE
+
 				}.parse();
 			}
 		}
@@ -817,6 +870,19 @@ public final class SendCoinsFragment extends Fragment
 		if (state == null || state.compareTo(State.INPUT) <= 0)
 			activity.setResult(Activity.RESULT_CANCELED);
 
+		/* BEGIN HELIOSCARD CHANGE */
+		if (state == State.SIGNING) {
+			// end the signing operation and go back to the input state
+			if (_secureElementTransactionSigner != null) {
+				_secureElementTransactionSigner.cancel(true);
+				_secureElementTransactionSigner = null;
+			}
+			state = State.INPUT;
+			updateView();
+			return;
+		}
+		/* END HELIOSCARD CHANGE */
+
 		activity.finish();
 	}
 
@@ -849,9 +915,18 @@ public final class SendCoinsFragment extends Fragment
 		return !privateKeyPasswordView.getText().toString().trim().isEmpty();
 	}
 
+	// BEGIN HELIOSCARD CHANGE
+	private boolean isAntiMalwareKeyValid() {
+		return WalletGlobals.getInstance(activity).isAntiMalwareKeySet();
+	}
+	// END HELIOSCARD CHANGE
+
 	private boolean everythingPlausible()
 	{
-		return state == State.INPUT && isPayerPlausible() && isAmountPlausible() && isPasswordPlausible();
+		// BEGIN HELIOSCARD CHANGE
+		// return state == State.INPUT && isPayerPlausible() && isAmountPlausible() && isPasswordPlausible();
+		return state == State.INPUT && isPayerPlausible() && isAmountPlausible() && isPasswordPlausible() && isAntiMalwareKeyValid();
+		// END HELIOSCARD CHANGE
 	}
 
 	private void requestFocusFirst()
@@ -907,6 +982,50 @@ public final class SendCoinsFragment extends Fragment
 		sendRequest.memo = paymentIntent.memo;
 		sendRequest.exchangeRate = amountCalculatorLink.getExchangeRate();
 		sendRequest.aesKey = encryptionKey;
+
+		/* BEGIN HELIOSCARD CHANGE */
+		// Prompt the user to tap the card so we can sign the transaction
+
+		try {
+
+            // We dont' want the inputs signed when we call completeTx because we are going to sign
+            // them ourselves with the SecureElementTransactionSigner
+            sendRequest.signInputs = false;
+
+			wallet.completeTx(sendRequest);
+
+			com.helioscard.wallet.bitcoin.ui.NFCAwareActivity nfcAwareActivity = (com.helioscard.wallet.bitcoin.ui.NFCAwareActivity) getActivity();
+
+            String antiMalwareKey = WalletGlobals.getInstance(nfcAwareActivity).getAntiMalwareKey();
+            // Should always have a antiMalwareKey, the UI will enforce it
+            // If we don't the SecureElementTransactionSigner will handle it gracefully
+            byte [] antiMalwareKeyBytes = null;
+            if (antiMalwareKey != null) {
+                antiMalwareKeyBytes = Util.hexStringToByteArray(antiMalwareKey);
+            }
+
+			_secureElementTransactionSigner = new com.helioscard.wallet.bitcoin.wallet.SecureElementTransactionSigner(antiMalwareKeyBytes, this, sendRequest/*, returnAddress*/, finalAmount, wallet);
+			// don't re-use the existing session, force the user to login, so that we can get the hashedPasswordBytes in case we lose a connection to the card
+			// and need to log the user back in again
+			nfcAwareActivity.getSecureElementAppletPromptIfNeeded(true, false);
+
+			// update the UI to show progress about how the signing is going
+			setProgressViewsInitialState();
+
+		} catch (org.bitcoinj.core.InsufficientMoneyException e) {
+			log.info("handleCardDetected: InsufficientMoneyException e: " + e.toString());
+			if (_secureElementTransactionSigner != null) {
+				_secureElementTransactionSigner.cancel(true);
+				_secureElementTransactionSigner = null;
+			}
+			onInsufficientMoneyOuter(e.missing);
+		}
+		/* END HELIOSCARD CHANGE */
+	}
+
+	/* BEGIN HELIOSCARD CHANGE */
+	private void sendTransaction(final Transaction incomingTransaction /*, final Address returnAddress*/, final Coin finalAmount) {
+	/* END HELIOSCARD CHANGE */
 
 		new SendCoinsOfflineTask(wallet, backgroundHandler)
 		{
@@ -990,6 +1109,8 @@ public final class SendCoinsFragment extends Fragment
 			@Override
 			protected void onInsufficientMoney(final Coin missing)
 			{
+				/* BEGIN HELIOSCARD CHANGE */
+				/* Moved the code that used to be here into the outer class => onInsufficientMoneyOuter()
 				setState(State.INPUT);
 
 				final Coin estimated = wallet.getBalance(BalanceType.ESTIMATED);
@@ -1024,6 +1145,9 @@ public final class SendCoinsFragment extends Fragment
 					dialog.setNeutralButton(R.string.button_dismiss, null);
 				}
 				dialog.show();
+				*/
+                onInsufficientMoneyOuter(missing);
+				/* END HELIOSCARD CHANGE */
 			}
 
 			@Override
@@ -1056,7 +1180,11 @@ public final class SendCoinsFragment extends Fragment
 				dialog.setNeutralButton(R.string.button_dismiss, null);
 				dialog.show();
 			}
-		}.sendCoinsOffline(sendRequest); // send asynchronously
+		/* BEGIN HELIOSCARD CHANGE */
+		// }.sendCoinsOffline(sendRequest); // send asynchronously
+		}.sendCoinsOffline(null, incomingTransaction); // send asynchronously
+		/* END HELIOSCARD CHANGE */
+
 	}
 
 	private Coin feePerKb()
@@ -1070,6 +1198,121 @@ public final class SendCoinsFragment extends Fragment
 		else
 			throw new IllegalStateException("cannot handle: " + feeCategory);
 	}
+	/* BEGIN HELIOSCARD CHANGE */
+    // This code used to be onInsufficientMoney as a call back in SendCoinsOfflineTask
+    protected void onInsufficientMoneyOuter(final Coin missing)
+    {
+		/* Original changes from Sanji - unlclear which is the write set of code.
+        setState(State.INPUT);
+
+		final Coin estimated = wallet.getBalance(BalanceType.ESTIMATED);
+		final Coin available = wallet.getBalance(BalanceType.AVAILABLE);
+		final Coin pending = estimated.subtract(available);
+
+		final MonetaryFormat btcFormat = config.getFormat();
+
+		final DialogBuilder dialog = DialogBuilder.warn(activity, R.string.send_coins_fragment_insufficient_money_title);
+		final StringBuilder msg = new StringBuilder();
+		msg.append(getString(R.string.send_coins_fragment_insufficient_money_msg1, btcFormat.format(missing)));
+		msg.append("\n\n");
+		if (pending.signum() > 0)
+			msg.append(getString(R.string.send_coins_fragment_pending, btcFormat.format(pending))).append("\n\n");
+		msg.append(getString(R.string.send_coins_fragment_insufficient_money_msg2));
+		dialog.setMessage(msg);
+		dialog.setPositiveButton(R.string.send_coins_options_empty, new DialogInterface.OnClickListener()
+		{
+			@Override
+			public void onClick(final DialogInterface dialog, final int which)
+			{
+				handleEmpty();
+			}
+		});
+		dialog.setNegativeButton(R.string.button_cancel, null);
+		dialog.show(); */
+
+		setState(State.INPUT);
+
+		final Coin estimated = wallet.getBalance(BalanceType.ESTIMATED);
+		final Coin available = wallet.getBalance(BalanceType.AVAILABLE);
+		final Coin pending = estimated.subtract(available);
+
+		final MonetaryFormat btcFormat = config.getFormat();
+
+		final DialogBuilder dialog = DialogBuilder.warn(activity, R.string.send_coins_fragment_insufficient_money_title);
+		final StringBuilder msg = new StringBuilder();
+		msg.append(getString(R.string.send_coins_fragment_insufficient_money_msg1, btcFormat.format(missing)));
+
+		if (pending.signum() > 0)
+			msg.append("\n\n").append(getString(R.string.send_coins_fragment_pending, btcFormat.format(pending)));
+		if (paymentIntent.mayEditAmount())
+			msg.append("\n\n").append(getString(R.string.send_coins_fragment_insufficient_money_msg2));
+		dialog.setMessage(msg);
+		if (paymentIntent.mayEditAmount())
+		{
+			dialog.setPositiveButton(R.string.send_coins_options_empty, new DialogInterface.OnClickListener()
+			{
+				@Override
+				public void onClick(final DialogInterface dialog, final int which)
+				{
+					handleEmpty();
+				}
+			});
+			dialog.setNegativeButton(R.string.button_cancel, null);
+		}
+		else
+		{
+			dialog.setNeutralButton(R.string.button_dismiss, null);
+		}
+		dialog.show();
+    }
+	/* END HELIOSCARD CHANGE */
+
+
+	/* BEGIN HELIOSCARD CHANGE */
+	@Override
+	public void secureElementTransactionSignerProgress(int progress) {
+		// Update UI with % progress
+		_signingProgressBar.setProgress(progress);
+	}
+
+	@Override
+	public void secureElementTransactionListenerSignerFinished(int result) {
+		com.helioscard.wallet.bitcoin.ui.NFCAwareActivity nfcAwareActivity = (com.helioscard.wallet.bitcoin.ui.NFCAwareActivity)getActivity();
+		if (result == com.helioscard.wallet.bitcoin.wallet.SecureElementTransactionSigner.FINISHED) {
+			setProgressViewsInitialState();
+			// commit the transaction to the wallet and then send the transaction
+			Transaction transaction = _secureElementTransactionSigner.getTransaction();
+//			Address returnAddress = _secureElementTransactionSigner.getReturnAddress();
+            Coin finalAmount = _secureElementTransactionSigner.getFinalAmount();
+			_secureElementTransactionSigner = null;
+			wallet.commitTx(transaction);
+			sendTransaction(transaction /*, returnAddress*/, finalAmount);
+		} else if (result == com.helioscard.wallet.bitcoin.wallet.SecureElementTransactionSigner.TAG_LOST) {
+			// The secure element might have taken too long to do the signing and we dropped the connection during the
+			// secureElementTransactionSigner.signTransaction(secureElementApplet) function call. Prompt for another tap
+			// in which case this function will be called and we'll try again
+			log.info("handleCardDetected: TagLostException");
+			nfcAwareActivity.showPromptForTapDialog(com.helioscard.wallet.bitcoin.ui.PromptForTapDialogFragment.TYPE_REPOSITION);
+		} else if (result == com.helioscard.wallet.bitcoin.wallet.SecureElementTransactionSigner.ERROR) {
+			log.error("secureElementTransactionListenerSignerFinished: error!");
+			// this shouldn't ever happen, no need to localize
+			_secureElementTransactionSigner = null;
+			state = State.FAILED;
+			updateView();
+			android.widget.Toast.makeText(getActivity(), R.string.error_sign, android.widget.Toast.LENGTH_LONG).show();
+		} else if (result == com.helioscard.wallet.bitcoin.wallet.SecureElementTransactionSigner.CANCELED) {
+			log.info("secureElementTransactionListenerSignerFinished: canceled!");
+			_secureElementTransactionSigner = null;
+        } else if (result == com.helioscard.wallet.bitcoin.wallet.SecureElementTransactionSigner.NO_ANTI_MALWARE_KEY) {
+            log.info("secureElementTransactionListenerSignerFinished: no anti malware key!");
+            _secureElementTransactionSigner = null;
+            state = State.INPUT;
+            updateView();
+            android.widget.Toast.makeText(getActivity(), R.string.no_anti_malware_key, android.widget.Toast.LENGTH_LONG).show();
+		}
+	}
+	/* END HELIOSCARD CHANGE */
+
 
 	private void handleScan()
 	{
@@ -1201,6 +1444,7 @@ public final class SendCoinsFragment extends Fragment
 			{
 				payeeGroup.setVisibility(View.VISIBLE);
 				receivingStaticView.setVisibility(View.GONE);
+
 				receivingAddressView.setVisibility(View.VISIBLE);
 			}
 			else
@@ -1211,6 +1455,7 @@ public final class SendCoinsFragment extends Fragment
 			receivingAddressView.setEnabled(state == State.INPUT);
 
 			amountGroup.setVisibility(paymentIntent.hasAmount() || (state != null && state.compareTo(State.INPUT) >= 0) ? View.VISIBLE : View.GONE);
+
 			amountCalculatorLink.setEnabled(state == State.INPUT && paymentIntent.mayEditAmount());
 
 			final boolean directPaymentVisible;
@@ -1251,6 +1496,14 @@ public final class SendCoinsFragment extends Fragment
 					else
 						hintView.setText(dryrunException.toString());
 				}
+
+                // BEGIN HELIOSCARD CHANGE
+                else if (!isAntiMalwareKeyValid()) {
+                    hintView.setTextColor(getResources().getColor(R.color.fg_error));
+                    hintView.setVisibility(View.VISIBLE);
+                    hintView.setText(getString(R.string.no_anti_malware_key));
+                }
+                // END HELIOSCARD CHANGE
 				else if (dryrunTransaction != null && dryrunTransaction.getFee() != null)
 				{
 					hintView.setTextColor(getResources().getColor(R.color.fg_insignificant));
@@ -1288,7 +1541,15 @@ public final class SendCoinsFragment extends Fragment
 				directPaymentMessageView.setVisibility(View.GONE);
 			}
 
-			viewCancel.setEnabled(state != State.REQUEST_PAYMENT_REQUEST && state != State.DECRYPTING && state != State.SIGNING);
+			/* BEGIN HELIOSCARD CHANGE */
+            // Sanji: Let the view cancel button be enabled when signing so the user can cancel during signing
+            // which they can do regardless of the button by removing the card
+            // before:
+            // viewCancel.setEnabled(state != State.DECRYPTING && state != State.SIGNING);
+			// Raven: Now it looks like this - Do we need to update the following line?
+			// viewCancel.setEnabled(state != State.REQUEST_PAYMENT_REQUEST && state != State.DECRYPTING && state != State.SIGNING);
+            viewCancel.setEnabled(state != State.DECRYPTING);
+			/* END HELIOSCARD CHANGE */
 			viewGo.setEnabled(everythingPlausible() && dryrunTransaction != null);
 
 			if (state == null || state == State.REQUEST_PAYMENT_REQUEST)
@@ -1345,6 +1606,10 @@ public final class SendCoinsFragment extends Fragment
 		{
 			getView().setVisibility(View.GONE);
 		}
+
+		/* BEGIN HELIOSCARD CHANGE */
+        setProgressViewsInitialState();
+		/* END HELIOSCARD CHANGE */
 	}
 
 	private void initStateFromIntentExtras(final Bundle extras)
@@ -1567,4 +1832,40 @@ public final class SendCoinsFragment extends Fragment
 			new RequestPaymentRequestTask.BluetoothRequestTask(backgroundHandler, callback, bluetoothAdapter)
 					.requestPaymentRequest(paymentIntent.paymentRequestUrl);
 	}
+
+
+	/* BEGIN HELIOSCARD CHANGE */
+	public void handleCardDetected(com.helioscard.wallet.bitcoin.secureelement.SecureElementApplet secureElementApplet, boolean tapRequested, boolean authenticated, byte[] hashedPasswordBytes) {
+		// The SendCoinsActivity parent of this fragment will listen for card detection events and route the calls here
+		log.info("handleCardDetected called");
+		com.helioscard.wallet.bitcoin.ui.NFCAwareActivity nfcAwareActivity = (com.helioscard.wallet.bitcoin.ui.NFCAwareActivity)getActivity();
+		if (_secureElementTransactionSigner != null) {
+			// It's possible we've already run once, and we disconnected from the card due to a TagLostException
+			// recreate the AsyncTask based on the old one (we can't re-use the same one in case it already ran) and then run the new one
+			_secureElementTransactionSigner = new com.helioscard.wallet.bitcoin.wallet.SecureElementTransactionSigner(_secureElementTransactionSigner);
+			if (hashedPasswordBytes != null) {
+				// if this is the first tap to begin signing, we were given hashed password bytes, save them
+				_secureElementTransactionSigner.setHashedPasswordBytes(hashedPasswordBytes);
+			}
+
+			// it's possible this is an ongoing transaction - this will continue the signing process or start it from scratch
+			// it will also run it in the background as its an asynctask
+			_secureElementTransactionSigner.execute(secureElementApplet);
+		}
+	}
+
+	public void userCanceledSecureElementPrompt() {
+		log.info("userCanceledSecureElementPrompt: called");
+		// The user was being prompted to tap a secure element or enter a secure element password, and the user canceled
+		// if we were in the middle of signing, we should cancel that now and let the user do more input
+		if (_secureElementTransactionSigner != null) {
+			_secureElementTransactionSigner.cancel(true);
+			_secureElementTransactionSigner = null;
+		}
+
+		state = State.INPUT;
+		updateView();
+	}
+/* END HELIOSCARD CHANGE */
+
 }

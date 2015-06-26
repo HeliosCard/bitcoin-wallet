@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+
+<!-- EEGIN HELIOSCARD CHANGE -->
+<!-- Added missing width and height tags to the main LinearLayout -->
+<!-- END HELIOSCARD CHANGE -->
+
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
 	android:orientation="vertical"
 	tools:ignore="RequiredSize" >
 
@@ -207,6 +214,33 @@
 		android:layout_height="wrap_content"
 		android:layoutAnimation="@anim/transaction_layout_anim"
 		android:visibility="gone" />
+
+	<!-- BEGIN HELIOSCARD CHANGE -->
+	<TextView
+		android:id="@+id/send_coins_progress_indicator_text_view"
+		android:visibility="gone"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:layout_marginLeft="@dimen/list_entry_padding_horizontal_lax"
+		android:layout_marginRight="@dimen/list_entry_padding_horizontal_lax"
+		android:layout_marginTop="8dp"
+		android:textColor="#000"
+		android:textSize="@dimen/font_size_normal"
+		android:textStyle="bold"
+		android:gravity="center"
+		/>
+
+	<ProgressBar
+		android:id="@+id/send_coins_progress_indicator_progress_bar"
+		android:visibility="gone"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		style="@android:style/Widget.ProgressBar.Horizontal"
+		android:layout_marginRight="5dp"
+		android:layout_marginLeft="5dp"
+		android:gravity="center"
+		/>
+	<!-- END HELIOSCARD CHANGE -->
 
 	<include layout="@layout/send_coins_buttons_include" />
 

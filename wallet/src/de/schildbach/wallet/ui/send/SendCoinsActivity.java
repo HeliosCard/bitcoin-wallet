@@ -25,7 +25,11 @@ import android.view.MenuItem;
 import de.schildbach.wallet.data.PaymentIntent;
 import de.schildbach.wallet.ui.AbstractBindServiceActivity;
 import de.schildbach.wallet.ui.HelpDialogFragment;
-import de.schildbach.wallet_test.R;
+// BEGIN HELIOSCARD CHANGE
+//import de.schildbach.wallet_test.R;
+import com.helioscard.wallet.bitcoin.R;
+// END HELIOSCARD CHANGE
+
 
 /**
  * @author Andreas Schildbach
@@ -75,4 +79,22 @@ public final class SendCoinsActivity extends AbstractBindServiceActivity
 
 		return super.onOptionsItemSelected(item);
 	}
+
+	/* BEGIN HELIOSCARD CHANGE */
+	@Override
+	protected void handleCardDetected(com.helioscard.wallet.bitcoin.secureelement.SecureElementApplet secureElementApplet, boolean tapRequested, boolean authenticated, byte[] hashedPasswordBytes) {
+		// Override this function to hear about the fact that a card was tapped, and route the call to the SendCoinsFragment, which
+		// might be interested in the message, if it's waiting for a card tap to sign the transaction
+		SendCoinsFragment sendCoinsFragment = (SendCoinsFragment)getFragmentManager().findFragmentById(R.id.send_coins_fragment);
+		sendCoinsFragment.handleCardDetected(secureElementApplet, tapRequested, authenticated, hashedPasswordBytes);
+	}
+
+	@Override
+	protected void userCanceledSecureElementPrompt() {
+		// Route this call to the sendCoinsFragment, if it's interested
+		SendCoinsFragment sendCoinsFragment = (SendCoinsFragment)getFragmentManager().findFragmentById(R.id.send_coins_fragment);
+		sendCoinsFragment.userCanceledSecureElementPrompt();
+	}
+	/* END HELIOSCARD CHANGE */
+
 }

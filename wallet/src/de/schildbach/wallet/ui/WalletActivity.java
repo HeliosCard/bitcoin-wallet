@@ -84,7 +84,11 @@ import de.schildbach.wallet.util.HttpGetThread;
 import de.schildbach.wallet.util.Io;
 import de.schildbach.wallet.util.Nfc;
 import de.schildbach.wallet.util.WalletUtils;
-import de.schildbach.wallet_test.R;
+// BEGIN HELIOSCARD CHANGE
+//import de.schildbach.wallet_test.R;
+import com.helioscard.wallet.bitcoin.R;
+// END HELIOSCARD CHANGE
+
 
 /**
  * @author Andreas Schildbach
@@ -154,11 +158,22 @@ public final class WalletActivity extends AbstractWalletActivity
 	@Override
 	protected void onNewIntent(final Intent intent)
 	{
+		/* BEGIN HELIOSCARD CHANGE */
+		// Make sure the super class hears about this event in case it's a card tap
+		// super.onNewIntent(intent);
+		/* END HELIOSCARD CHANGE */
 		handleIntent(intent);
 	}
 
 	private void handleIntent(final Intent intent)
 	{
+		/* BEGIN HELIOSCARD CHANGE */
+		if (doesIntentComeFromHeliosCard(intent)) {
+		// this tap was a result of a card being tapped - ignore it here
+		// return;
+		// }
+		/* END HELIOSCARD CHANGE */
+
 		final String action = intent.getAction();
 
 		if (NfcAdapter.ACTION_NDEF_DISCOVERED.equals(action))
@@ -180,6 +195,7 @@ public final class WalletActivity extends AbstractWalletActivity
 				{
 					dialog(WalletActivity.this, null, 0, messageResId, messageArgs);
 				}
+
 			}.parse();
 		}
 	}
@@ -216,6 +232,14 @@ public final class WalletActivity extends AbstractWalletActivity
 				{
 					dialog(WalletActivity.this, null, R.string.button_scan, messageResId, messageArgs);
 				}
+
+				// BEGIN HELIOSCARD CHANGE
+				@Override
+				protected void handleAntiMalwareKey(String key) {
+					saveAntiMalwareKey(key);
+				}
+				// END HELIOSCARD CHANGE
+
 			}.parse();
 		}
 	}
@@ -234,6 +258,17 @@ public final class WalletActivity extends AbstractWalletActivity
 	@Override
 	public boolean onPrepareOptionsMenu(final Menu menu)
 	{
+		// BEGIN HELIOSCARD CHANGE
+		if( wallet == null) {
+			// This activity will be closing down shortly because it was started with no wallet.
+			// NFCAwareActivity will be shutting it down
+			// A better solution might be to have an intermediate activity started when the app
+			// starts which determines if the wallet is empty or not and if it is starts up the
+			// Tap to start activity (MainActivity.java)
+			return true;
+		}
+		// END HELIOSCARD CHANGE
+
 		super.onPrepareOptionsMenu(menu);
 
 		final Resources res = getResources();
@@ -243,6 +278,7 @@ public final class WalletActivity extends AbstractWalletActivity
 		menu.findItem(R.id.wallet_options_restore_wallet).setEnabled(
 				Environment.MEDIA_MOUNTED.equals(externalStorageState) || Environment.MEDIA_MOUNTED_READ_ONLY.equals(externalStorageState));
 		menu.findItem(R.id.wallet_options_backup_wallet).setEnabled(Environment.MEDIA_MOUNTED.equals(externalStorageState));
+
 		menu.findItem(R.id.wallet_options_encrypt_keys).setTitle(
 				wallet.isEncrypted() ? R.string.wallet_options_encrypt_keys_change : R.string.wallet_options_encrypt_keys_set);
 

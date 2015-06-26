@@ -30,14 +30,20 @@ import android.text.format.DateUtils;
 
 import com.google.common.io.BaseEncoding;
 
-import de.schildbach.wallet_test.R;
+// BEGIN HELIOSCARD CHANGE
+//import de.schildbach.wallet_test.R;
+import com.helioscard.wallet.bitcoin.R;
+// END HELIOSCARD CHANGE
 
 /**
  * @author Andreas Schildbach
  */
 public final class Constants
 {
-	public static final boolean TEST = R.class.getPackage().getName().contains("_test");
+	/* BEGIN HELIOSCARD CHANGE */
+	// public static final boolean TEST = R.class.getPackage().getName().contains("_test");
+	public static final boolean TEST = !com.helioscard.wallet.bitcoin.Constants.PRODUCTION_BUILD;
+	/* END HELIOSCARD CHANGE */
 
 	/** Network this wallet is on (e.g. testnet or mainnet). */
 	public static final NetworkParameters NETWORK_PARAMETERS = TEST ? TestNet3Params.get() : MainNetParams.get();

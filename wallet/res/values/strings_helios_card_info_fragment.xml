@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="helios_card_info_fragment_card_identifier">Card ID: </string>
+    <string name="helios_card_info_fragment_card_connected_to_network">Connected</string>
+    <string name="helios_card_info_fragment_card_not_connected_to_network">Disconnected</string>
+
+</resources>

@@ -63,7 +63,11 @@ import de.schildbach.wallet.service.BlockchainServiceImpl;
 import de.schildbach.wallet.util.CrashReporter;
 import de.schildbach.wallet.util.Io;
 import de.schildbach.wallet.util.LinuxSecureRandom;
-import de.schildbach.wallet_test.R;
+// BEGIN HELIOSCARD CHANGE
+//import de.schildbach.wallet_test.R;
+import com.helioscard.wallet.bitcoin.R;
+// END HELIOSCARD CHANGE
+
 
 /**
  * @author Andreas Schildbach
@@ -138,7 +142,13 @@ public class WalletApplication extends Application
 
 		config.updateLastVersionCode(packageInfo.versionCode);
 
-		afterLoadWallet();
+		// BEGIN HELIOSCARD CHANGE
+		// afterLoadWallet(); <-- The original change.
+		// On initial application startup the wallet won't have been created until a card it tapped
+		if (wallet!= null) {
+			afterLoadWallet();
+		}
+		// END HELIOSCARD CHANGE
 
 		cleanupFiles();
 	}
@@ -306,9 +316,14 @@ public class WalletApplication extends Application
 		}
 		else
 		{
-			wallet = new Wallet(Constants.NETWORK_PARAMETERS);
-
-			backupWallet();
+			// BEGIN HELIOSCARD CHANGE
+			// We don't want to create a local wallet because this wallet wil be stored on the HeliosCard
+			// Instead we'll wait till the use taps a card and then provide a wallet using replaceWallet()
+			//wallet = new Wallet(Constants.NETWORK_PARAMETERS);
+			//
+			//backupWallet();
+			wallet = null;
+			// END HELIOSCARD CHANGE
 
 			config.armBackupReminder();
 
@@ -465,7 +480,15 @@ public class WalletApplication extends Application
 	public void replaceWallet(final Wallet newWallet)
 	{
 		resetBlockchain();
-		wallet.shutdownAutosaveAndWait();
+
+		// BEGIN HELIOSCARD CHANGE
+		// wallet.shutdownAutosaveAndWait();<-- The original change.
+		// When we first start the application and a wallet is created by a card tap the initial
+		// wallet will not yet be set.
+		if (wallet != null) {
+			wallet.shutdownAutosaveAndWait();
+		}
+		// END HELIOSCARD CHANGE
 
 		wallet = newWallet;
 		config.maybeIncrementBestChainHeightEver(newWallet.getLastBlockSeenHeight());

@@ -61,7 +61,11 @@ import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.data.PaymentIntent;
 import de.schildbach.wallet.util.Io;
 import de.schildbach.wallet.util.Qr;
-import de.schildbach.wallet_test.R;
+
+// BEGIN HELIOSCARD CHANGE
+//import de.schildbach.wallet_test.R;
+import com.helioscard.wallet.bitcoin.R;
+// END HELIOSCARD CHANGE
 
 /**
  * @author Andreas Schildbach
@@ -127,6 +131,13 @@ public abstract class InputParser
 					error(R.string.input_parser_invalid_bitcoin_uri, input);
 				}
 			}
+			// BEGIN HELIOSCARD CHANGE
+			else if (input.startsWith("amkey:")) {
+
+                handleAntiMalwareKey( input.substring(6)); // everything after "amkey:"
+
+			}
+			// END HELIOSCARD CHANGE
 			else if (PATTERN_BITCOIN_ADDRESS.matcher(input).matches())
 			{
 				try
@@ -431,6 +442,12 @@ public abstract class InputParser
 	protected abstract void handleDirectTransaction(Transaction transaction) throws VerificationException;
 
 	protected abstract void error(int messageResId, Object... messageArgs);
+
+	// BEGIN HELIOSCARD CHANGE
+	protected void handleAntiMalwareKey(String key) {
+		cannotClassify(key);
+	}
+	// END HELIOSCARD CHANGE
 
 	protected void cannotClassify(final String input)
 	{

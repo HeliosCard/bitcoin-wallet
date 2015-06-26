@@ -45,7 +45,17 @@ public abstract class SendCoinsOfflineTask
 		this.callbackHandler = new Handler(Looper.myLooper());
 	}
 
+
+	/* BEGIN HELIOSCARD CHANGE */
 	public final void sendCoinsOffline(final SendRequest sendRequest)
+	{
+		sendCoinsOffline(sendRequest, null);
+	}
+	/* END HELIOSCARD CHANGE */
+
+	/* BEGIN HELIOSCARD CHANGE */
+	public final void sendCoinsOffline(final SendRequest sendRequest, final Transaction incomingTransaction)
+	/* END HELIOSCARD CHANGE */
 	{
 		backgroundHandler.post(new Runnable()
 		{
@@ -54,7 +64,11 @@ public abstract class SendCoinsOfflineTask
 			{
 				try
 				{
-					final Transaction transaction = wallet.sendCoinsOffline(sendRequest); // can take long
+					/* BEGIN HELIOSCARD CHANGE */
+					// If we have an incoming transaction, it has already been signed, so use that instead of creating it ourselves.
+					// final Transaction transaction = wallet.sendCoinsOffline(sendRequest); // can take long
+					final Transaction transaction = incomingTransaction != null ? incomingTransaction : wallet.sendCoinsOffline(sendRequest);
+					/* END HELIOSCARD CHANGE */
 
 					callbackHandler.post(new Runnable()
 					{

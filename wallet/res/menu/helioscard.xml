@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--TODO: Remove for production-->
+    <item
+        android:id="@+id/wipe_card"
+        android:showAsAction="never"
+        android:title="Wipe Card"/>
+
+    <!--TODO: Remove for production-->
+    <item
+        android:id="@+id/clear_anti_malware_key"
+        android:showAsAction="never"
+        android:title="Clear Anti malware key"/>
+
+    <!--TODO: Remove for production-->
+    <item
+        android:id="@+id/connect_to_authentication"
+        android:showAsAction="never"
+        android:title="Connect To Authentication Device"/>
+
+    <item
+        android:id="@+id/change_password"
+        android:showAsAction="never"
+        android:title="@string/option_change_password"/>
+
+    <!--TODO: Remove for production-->
+    <item
+        android:id="@+id/check_card"
+        android:showAsAction="never"
+        android:title="Check card keys"/>
+
+
+</menu>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="tap_to_begin">Tap card to begin</string>
+    <string name="main_welcome_message">Welcome to the HeliosCard Bitcoin Wallet.  This application works in conjunction with a HeliosCard - a highly secure, encrypted, and sleek hardware wallet.  To begin, please ensure your NFC radio is on and hold your HeliosCard against the back of the phone to continue.  If your phone has a case on it, you may need to remove it.  To find out more about HeliosCard, including how to obtain one, please visit the link below.</string>
+    <string name="main_card_not_recognized">You are holding an unrecognized card against the device.</string>
+    <string name="main_hyperlink">http://www.helioscard.com</string>
+
+</resources>

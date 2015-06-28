@@ -169,9 +169,9 @@ public final class WalletActivity extends AbstractWalletActivity
 	{
 		/* BEGIN HELIOSCARD CHANGE */
 		if (doesIntentComeFromHeliosCard(intent)) {
-		// this tap was a result of a card being tapped - ignore it here
-		// return;
-		// }
+			// This tap was a result of a card being tapped - ignore it here
+			return;
+		}
 		/* END HELIOSCARD CHANGE */
 
 		final String action = intent.getAction();
